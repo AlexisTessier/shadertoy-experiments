@@ -2,7 +2,7 @@ float easeInOutQuart(float t){
     return t<0.50 ? 8.00*t*t*t*t : 1.00-8.00*(--t)*t*t*t;
 }
 
-vec4 lightSpot(vec2 fragCoord, vec4 light, float radius, vec4 color){
+vec4 pointLight(vec2 fragCoord, vec4 light, float radius, vec4 color){
     //light.xy => center position
     //light.z => intensity
     //light.w => power
@@ -28,7 +28,7 @@ bool circle(vec2 fragCoord, vec3 c){
     return (distance(fragCoord, vec2(c.xy)) <= c.z);
 }
 
-vec4 shadow(vec2 fragCoord, vec2 light, vec3 c, vec4 color){
+bool shadow_point_circle(vec2 fragCoord, vec2 light, vec3 c){
     vec2 ray = light - fragCoord;
     vec2 cToL = vec2(c.xy) - light;
                           
@@ -37,28 +37,18 @@ vec4 shadow(vec2 fragCoord, vec2 light, vec3 c, vec4 color){
     float cc = dot(cToL, cToL) - (c.z*c.z) ;
 
     float discriminant = b*b-4.0*a*cc;
-    if( discriminant < 0.0 )
+    if( discriminant >= 0.0 )
     {
-      return color;
-    }
-    else{
         discriminant = sqrt( discriminant );
         float t1 = (-b - discriminant)/(2.0*a);
   		float t2 = (-b + discriminant)/(2.0*a);
         
-        if( t1 >= 0.0 && t1 <= 1.0 )
+        if((t1 >= 0.0 && t1 <= 1.0) || ( t2 >= 0.0 && t2 <= 1.0 ))
         {
-           return vec4(0.0);
+           return true;
         }
-          if( t2 >= 0.0 && t2 <= 1.0 )
-          {
-            // ExitWound
-            return vec4(0.0);
-          }
     }
-    return color;
-    
-	
+    return false;
 }
 
 
@@ -73,24 +63,29 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     
     fragColor = vec4(0.0);
     
-    fragColor += lightSpot(
-        fragCoord,
-        /*light*/ vec4(iResolution.xy/4.0, 1.0*var, 35.0*var),
-        /*radius*/85.0,
-        /*color*/ vec4(1.0, 0.2, 0.1, 1.0)
-    );
-    
-    vec2 c1 = vec2(iResolution.xy/2.0);
+    vec2 cl1 = iResolution.xy/4.0;
+    vec2 cl2 = (vec2(0.0)+iGlobalTime*30.0)-vec2(1.0, iGlobalTime*18.0)+iGlobalTime*5.0;
     vec3 c = vec3(iResolution.xy/2.0+30.0, 20.0);
-    
-    fragColor += shadow(fragCoord, c1, c, lightSpot(
-        fragCoord,
-        /*light*/ vec4(c1.xy, 1.2*var, 24.0*var),
-        /*radius*/120.0,
-        /*color*/ vec4(0.1, 0.4, 1.0, 1.0)
-    ));
     
     fragColor = circle(fragCoord,
     	/*center, radius*/c
-    ) ? vec4(0.5) : fragColor;
+    ) ? vec4(0.05) : fragColor;
+    
+    fragColor += shadow_point_circle(fragCoord,
+    	cl1, c
+    ) ? vec4(0.0) : pointLight(
+        fragCoord,
+        /*light*/ vec4(cl1.xy, 1.0*var, 35.0*var),
+        /*radius*/420.0,
+        /*color*/ vec4(1.0, 0.2, 0.1, 1.0)
+    );
+    
+    fragColor += shadow_point_circle(fragCoord,
+    	cl2, c
+    ) ? vec4(0.0) : pointLight(
+        fragCoord,
+        /*light*/ vec4(cl2.xy, 2.8*var, 24.0*var),
+        /*radius*/480.0,
+        /*color*/ vec4(0.1, 0.4, 1.0, 1.0)
+    );
 }
