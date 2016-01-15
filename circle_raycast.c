@@ -35,9 +35,9 @@ bool shadow_point_circle(vec2 fragCoord, vec2 light, vec3 c){
     float a = dot(ray, ray);
     float b = dot(2.0*cToL, ray) ;
     float cc = dot(cToL, cToL) - (c.z*c.z) ;
-
+    
     float discriminant = b*b-4.0*a*cc;
-    if( discriminant >= 0.0 )
+    if( discriminant >= 0.0)
     {
         discriminant = sqrt( discriminant );
         float t1 = (-b - discriminant)/(2.0*a);
@@ -48,23 +48,22 @@ bool shadow_point_circle(vec2 fragCoord, vec2 light, vec3 c){
            return true;
         }
     }
-    return false;
+    return circle(fragCoord, c);
 }
-
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     vec2 position = vec2(floor(fragCoord.x), floor(fragCoord.y));
     vec2 uv = fragCoord.xy / iResolution.xy;
-    float loopDuration = 25.0, halfDuration = (loopDuration/2.0);
+    float loopDuration = 12.0, halfDuration = (loopDuration/2.0);
     float time = mod(iGlobalTime, loopDuration);
     float cursor = 2.0*((time < halfDuration ? time : (loopDuration-time))/loopDuration);
-    float var = 0.2+easeInOutQuart(cursor)/2.0;
+    float var = 0.6+easeInOutQuart(cursor)/2.0;
     
     fragColor = vec4(0.0);
     
-    vec2 cl1 = iResolution.xy/4.0;
-    vec2 cl2 = (vec2(0.0)+iGlobalTime*30.0)-vec2(1.0, iGlobalTime*18.0)+iGlobalTime*5.0;
+    vec2 cl1 = (vec2(0.0)+iGlobalTime*30.0)-vec2(1.0, iGlobalTime*18.0)+iGlobalTime*5.0;
+    vec2 cl2 = vec2(iResolution.xy) - ((vec2(0.0)+iGlobalTime*30.0)-vec2(1.0, iGlobalTime*18.0)+iGlobalTime*5.0);
     vec3 c = vec3(iResolution.xy/2.0+30.0, 20.0);
     
     fragColor = circle(fragCoord,
@@ -84,7 +83,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     	cl2, c
     ) ? vec4(0.0) : pointLight(
         fragCoord,
-        /*light*/ vec4(cl2.xy, 2.8*var, 24.0*var),
+        /*light*/ vec4(cl2.xy, 1.2*var, 24.0*var),
         /*radius*/480.0,
         /*color*/ vec4(0.1, 0.4, 1.0, 1.0)
     );
