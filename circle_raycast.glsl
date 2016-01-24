@@ -16,13 +16,13 @@ vec4 pointLight(vec2 fragCoord, vec4 light, float radius, vec4 color){
     float idiv = light.z/(10.0);
     float iexp = (i/r*p);
     
-    float ambiant = d < radius ? idiv : idiv/(pow(ddiv, 8.0));
+    float ambiant = d < radius ? idiv : idiv/(pow(ddiv, 2.0));
     
     return (color*(iexp))+(color*ambiant);
 }
 
 bool circle(vec2 fragCoord, vec3 c){
-	//c.xy => center position
+    //c.xy => center position
     //c.z => radius
     
     return (distance(fragCoord, vec2(c.xy)) <= c.z);
@@ -41,7 +41,7 @@ bool shadow_point_circle(vec2 fragCoord, vec2 light, vec3 c){
     {
         discriminant = sqrt( discriminant );
         float t1 = (-b - discriminant)/(2.0*a);
-  		float t2 = (-b + discriminant)/(2.0*a);
+        float t2 = (-b + discriminant)/(2.0*a);
         
         if((t1 >= 0.0 && t1 <= 1.0) || ( t2 >= 0.0 && t2 <= 1.0 ))
         {
@@ -67,24 +67,24 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     vec3 c = vec3(iResolution.xy/2.0+30.0, 20.0);
     
     fragColor = circle(fragCoord,
-    	/*center, radius*/c
+        /*center, radius*/c
     ) ? vec4(0.05) : fragColor;
     
     fragColor += shadow_point_circle(fragCoord,
-    	cl1, c
+        cl1, c
     ) ? vec4(0.0) : pointLight(
         fragCoord,
-        /*light*/ vec4(cl1.xy, 1.0*var, 35.0*var),
-        /*radius*/420.0,
-        /*color*/ vec4(1.0, 0.2, 0.1, 1.0)
+        /*light*/ vec4(cl1.xy, 2.0*var, 4.0*var),
+        /*radius*/30.0,
+        /*color*/ vec4(0.0, 0.7, 0.9, 1.0)
     );
     
     fragColor += shadow_point_circle(fragCoord,
-    	cl2, c
+        cl2, c
     ) ? vec4(0.0) : pointLight(
         fragCoord,
-        /*light*/ vec4(cl2.xy, 1.2*var, 24.0*var),
-        /*radius*/480.0,
-        /*color*/ vec4(0.1, 0.4, 1.0, 1.0)
+        /*light*/ vec4(cl2.xy, 1.2*var, 8.0*var),
+        /*radius*/60.0,
+        /*color*/ vec4(0.3, 0.2, 0.4, 1.0)
     );
 }
