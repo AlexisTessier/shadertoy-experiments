@@ -94,6 +94,19 @@ vec3 transform(inout vec3 vertex, vec3 s, vec4 r, vec3 t){
 
 /*-------------------------------*/
 
+vec3 normal(vec3 a, vec3 b){
+	return normalize(cross(a, b));
+}
+
+vec3 normal(mat3 triangle){
+	return normal(
+		normalize(triangle[1]-triangle[2]),
+		normalize(triangle[0]-triangle[2])
+	);
+}
+
+/*-------------------------------*/
+
 struct Camera{
 	vec3 position;
 	vec3 target;
@@ -103,6 +116,10 @@ struct Camera{
 	float near;
 	float far;
 };
+
+vec3 cameraDirection(Camera cam){
+	return normalize(cam.target - cam.position);
+}
 
 mat4 viewMatrix(vec3 origin, vec3 target, vec3 up) {
 	vec3 d = normalize(target - origin);
@@ -203,8 +220,43 @@ vec3 project(inout vec3 vertex, mat4 mvp, mat4 viewport){
 	return vertex;
 }
 
+bool triangle_render(vec2 fragCoord, mat3 triangle, inout float intersectionDistance){
+    float kEpsilon = 0.05;
+    vec3 orig = vec3(fragCoord, 0.0);
+	vec3 dir = -AXIS_Z;
+	vec3 v0 = triangle[2];
+    vec3 v0v1 = triangle[1] - v0;
+    vec3 v0v2 = triangle[0] - v0;
+
+    vec3 pvec = cross(dir, v0v2);
+    float det = dot(v0v1, pvec);
+
+    if (abs(det) < kEpsilon) return false;
+    float invDet = 1.0 / det; 
+ 
+    vec3 tvec = orig - v0; 
+    float u = dot(tvec, pvec) * invDet; 
+    if (u < 0.0 || u > 1.0) return false; 
+ 
+    vec3 qvec = cross(tvec, v0v1); 
+    float v = dot(dir, qvec) * invDet; 
+    if (v < 0.0 || u + v > 1.0) return false;
+ 
+    intersectionDistance = dot(v0v2, qvec) * invDet; 
+ 
+    return true;
+}
+
+bool triangle_render(vec2 fragCoord, mat3 triangle){
+	float t = 0.0;
+	return triangle_render(fragCoord, triangle, t);
+}
+
 /*cube functions*/
+
 #define CubeVerticesCount 8
+#define CubeTrianglesCount 12
+#define CubeEdgesCount 12
 void apply_matrix(inout vec3 vertices[CubeVerticesCount], mat4 matrix){
 	for(int i = 0; i<CubeVerticesCount; i++){
 		vertices[i] = apply_matrix(vertices[i], matrix);
@@ -277,13 +329,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 		/*rotate*/vec4(AXIS_Z, iGlobalTime), 
 		/*translate*/vec3(0.0, 0.0, 1.0+0.05*iGlobalTime)
 	);
-	/*----------------*/
-
-	/*----------------*/
-	//projection to screen
 
 	Camera cam = Camera(
-		/*position*/cube2[3] + vec3(0.01, 0.02, 1.2),
+		/*position*/cube2[3] + vec3(0.15, 0.02, 1.2),
 		/*target*/POINT_ZERO,
 		/*up*/AXIS_Y,
 		/*fov*/vec2(85.0),
@@ -291,6 +339,17 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 		/*near*/0.1,
 		/*far*/ 100.0
 	);
+
+	/*----------------*/
+
+	vec3 triangleNormal = normal(mat3(
+		cube2[3], cube2[4], cube2[5]
+	));
+	vec3 cameraNormal = cameraDirection(cam);
+	vec4 triangleColor = COLOR_BLUE*clamp(dot(triangleNormal, -cameraNormal), 0.0, 1.0);
+
+	/*----------------*/
+	//projection to screen
 
 	mat4 mvp = mvpMatrix(cam);
 	mat4 viewport = viewportMatrix(cam, mvp);
@@ -303,7 +362,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	/*----------------*/
 	//vertex render
 	fragColor = COLOR_BLACK;
-	
+
+	fragColor = triangle_render(fragCoord, mat3(
+		cube2[3], cube2[4], cube2[5]
+	)) ? triangleColor : fragColor;
+    
 	fragColor = vertex_render(fragCoord, cube) ?
 		COLOR_GREEN : fragColor;
 	fragColor = vertex_render(fragCoord, cube2) ?
