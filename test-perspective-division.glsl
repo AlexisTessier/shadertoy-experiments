@@ -8,7 +8,7 @@
 #define AXIS_Y vec3(0.0, 1.0, 0.0)
 #define AXIS_Z vec3(0.0, 0.0, 1.0)
 
-#define POINT_ZERO vec3(0.0)
+#define POINT_ZERO vec3(0.0, 0.0, 0.0)
 
 vec4 debug(bool condition){
 	return condition ? COLOR_GREEN*0.5 : COLOR_RED*0.5;
@@ -49,9 +49,51 @@ mat4 translationMatrix(vec3 t){
 	);
 }
 
+vec4 apply_matrix(inout vec4 vertex, mat4 matrix){
+	vertex = vertex*matrix;
+	return vertex;
+}
+
+vec4 scale(inout vec4 vertex, vec3 s){
+	return apply_matrix(vertex, scalingMatrix(s));
+}
+
+vec4 rotate(inout vec4 vertex, vec4 r){
+	return apply_matrix(vertex, rotationMatrix(r));
+}
+
+vec4 translate(inout vec4 vertex, vec3 t){
+	return apply_matrix(vertex, translationMatrix(t));
+}
+
+vec4 scaleAndRotate(inout vec4 vertex, vec3 s, vec4 r){
+	vertex = scale(vertex, s);
+	vertex = rotate(vertex, r);
+	return vertex;
+}
+
+vec4 scaleAndTranslate(inout vec4 vertex, vec3 s, vec3 t){
+	vertex = scale(vertex, s);
+	vertex = translate(vertex, t);
+	return vertex;
+}
+
+vec4 rotateAndTranslate(inout vec4 vertex, vec4 r, vec3 t){
+	vertex = rotate(vertex, r);
+	vertex = translate(vertex, t);
+	return vertex;
+}
+
+vec4 transform(inout vec4 vertex, vec3 s, vec4 r, vec3 t){
+	vertex = scale(vertex, s);
+	vertex = rotate(vertex, r);
+	vertex = translate(vertex, t);
+	return vertex;
+}
+
 vec3 apply_matrix(inout vec3 vertex, mat4 matrix){
-	vec4 v = vec4(vertex.xyz, 1.0)*matrix;
-	vertex = v.xyz;
+	vec4 v = vec4(vertex, 1.0)*matrix;
+    vertex = v.xyz;
 	return vertex;
 }
 
@@ -91,6 +133,7 @@ vec3 transform(inout vec3 vertex, vec3 s, vec4 r, vec3 t){
 	vertex = translate(vertex, t);
 	return vertex;
 }
+
 
 /*-------------------------------*/
 
@@ -137,7 +180,7 @@ mat4 projectionMatrix(
 	float l = -r;
 	float t = angleOfView.y/aspect_ratio;
 	float b = -t;
-	
+
 	return mat4(
 		near2/(r-l), 0.0, (r+l)/(r-l), 0.0,
 		0.0, near2/(t-b), (t+b)/(t-b), 0.0,
@@ -146,59 +189,11 @@ mat4 projectionMatrix(
 	);
 }
 
-vec3 canonical(inout vec3 vertex){
-	vec2 fov = vec2(85.0);
-	float near = 0.1;
-	float far =100.0;
-
-	vec2 nearClip = vec2(
-		tan(radians(fov.x/2.0))*near,
-		tan(radians(fov.y/2.0))*near
-	);
-
-	vec2 farClip = vec2(
-		tan(radians(fov.x/2.0))*far,
-		tan(radians(fov.y/2.0))*far
-	);
-
-	float relZpos = vertex.z/(far-near);
-    
-    if(relZpos<=0.0){
-    	return vertex;
-    };
-
-    /*
-	let scaleFactor s
-	let relZpos z = 1.0
-
-	h/2 = f / (s*(n/f))
-
-	h = 2f / (s*(n/f))
-
-	h = 2f / (s/(f/n))
-	h = 2f * ((f/n) / s)
-	h = (2f * (f/n)) / s
-
-	h*s  = 2f*(f/n)
-	s = 
-    */
-
-    float scaleFactor = 2500.0;
-    float f = farClip.y, n = nearClip.y, h = iResolution.y;
-    scaleFactor = (2.0*f*(f/n))/h;
-	vec2 clipRatio = vec2(1.0) / (scaleFactor*(relZpos*(nearClip/farClip)));
-    //vec2 clipRatio = i
-
-	vertex = scale(vertex, vec3(clipRatio.xy, 1.0));
-
-	return vertex;
+vec3 canonical(inout vec4 vertex){
+	//float zi = 1.0/vertex.z;
+	//vertex = scale(vertex, vec3(zi, zi, 1.0));
+	return vec3(vertex.xyz/1.0);
 }
-
-//farClip * clipRatio = nearCLip
-//cr * fc = nc
-//cr = nc/fc
-
-//
 
 mat4 viewportMatrix(
 	vec2 origin, 
@@ -218,7 +213,7 @@ mat4 viewportMatrix(
 
 mat4 viewportMatrix(Camera cam, mat4 mvp, float near, float far){
 	vec4 target = vec4(cam.target, 1.0)*mvp;
-	vec3 t = canonical(target.xyz);
+	vec3 t = canonical(target);
 	return viewportMatrix(
 		/*origin*/t.xy,
 		/*resolution*/cam.resolution,
@@ -245,17 +240,24 @@ bool vertex_render(vec2 fragCoord, vec3 vertex){
 }
 
 vec3 project(inout vec3 vertex, mat4 mvp, mat4 viewport){
-	vertex = apply_matrix(vertex, mvp);
-	vertex = canonical(vertex);
+	vec4 v = vec4(vertex, 1.0);
+	v = apply_matrix(v, mvp);
+	vertex = canonical(v);
 	vertex = apply_matrix(vertex, viewport);
 	return vertex;
 }
 
 /*cube functions*/
 #define CubeVerticesCount 8
-void apply_matrix(inout vec3 vertices[CubeVerticesCount], mat4 matrix){
+void apply_matrix(inout vec4 vertices[CubeVerticesCount], mat4 matrix){
 	for(int i = 0; i<CubeVerticesCount; i++){
 		vertices[i] = apply_matrix(vertices[i], matrix);
+	}
+}
+
+void transform(inout vec4 vertices[CubeVerticesCount], vec3 s, vec4 r, vec3 t){
+	for(int i = 0; i<CubeVerticesCount; i++){
+		//vertices[i] = transform(vertices[i], s, r, t);;
 	}
 }
 
@@ -265,9 +267,9 @@ void transform(inout vec3 vertices[CubeVerticesCount], vec3 s, vec4 r, vec3 t){
 	}
 }
 
-void canonical(inout vec3 vertices[CubeVerticesCount]){
+void canonical(inout vec4 vertices[CubeVerticesCount]){
 	for(int i = 0; i<CubeVerticesCount; i++){
-		vertices[i] = canonical(vertices[i]);
+		//vertices[i] = canonical(vertices[i]);
 	}
 }
 
@@ -316,14 +318,14 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	cube_world(cube, 
 		/*scale*/vec3(0.2), 
 		/*rotate*/vec4(AXIS_Z, -0.0), 
-		/*translate*/vec3(0.0, 0.0, -1500.25)
+		/*translate*/vec3(0.0, 0.0, 0.25)
 	);
 
-    vec3 cubeCenter = vec3(0.0, 0.0, 45.0);
+    vec3 cubeCenter = vec3(0.0, 0.0, 5.0);
     
 	vec3 cube2[CubeVerticesCount];
 	cube_world(cube2, 
-		/*scale*/vec3(0.2, 0.2, 0.8), 
+		/*scale*/vec3(0.2), 
 		/*rotate*/vec4(AXIS_Z, 0.0), 
 		/*translate*/cubeCenter
 	);
@@ -333,8 +335,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	//projection to screen
 
 	Camera cam = Camera(
-		/*position*/cube2[3] + vec3(0.15, 0.05, 150.5),
-		/*target*/cube[5],
+		/*position*/cubeCenter + vec3(0.45, 0.04, 1.5),
+		/*target*/cubeCenter,
 		/*up*/AXIS_Y,
 		/*fov*/vec2(85.0),
 		/*resolution*/iResolution.xy,
@@ -361,8 +363,4 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	fragColor = vertex_render(fragCoord, cubeCenter) ?
 		COLOR_RED : fragColor;
 	/*----------------*/
-    
-    //float 
-
-	//fragColor = debug(cube[4].z > cube2[4].z);
 }

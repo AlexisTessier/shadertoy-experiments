@@ -137,7 +137,7 @@ mat4 projectionMatrix(
 	float l = -r;
 	float t = angleOfView.y/aspect_ratio;
 	float b = -t;
-	
+
 	return mat4(
 		near2/(r-l), 0.0, (r+l)/(r-l), 0.0,
 		0.0, near2/(t-b), (t+b)/(t-b), 0.0,
@@ -147,58 +147,11 @@ mat4 projectionMatrix(
 }
 
 vec3 canonical(inout vec3 vertex){
-	vec2 fov = vec2(85.0);
-	float near = 0.1;
-	float far =100.0;
-
-	vec2 nearClip = vec2(
-		tan(radians(fov.x/2.0))*near,
-		tan(radians(fov.y/2.0))*near
-	);
-
-	vec2 farClip = vec2(
-		tan(radians(fov.x/2.0))*far,
-		tan(radians(fov.y/2.0))*far
-	);
-
-	float relZpos = vertex.z/(far-near);
-    
-    if(relZpos<=0.0){
-    	return vertex;
-    };
-
-    /*
-	let scaleFactor s
-	let relZpos z = 1.0
-
-	h/2 = f / (s*(n/f))
-
-	h = 2f / (s*(n/f))
-
-	h = 2f / (s/(f/n))
-	h = 2f * ((f/n) / s)
-	h = (2f * (f/n)) / s
-
-	h*s  = 2f*(f/n)
-	s = 
-    */
-
-    float scaleFactor = 2500.0;
-    float f = farClip.y, n = nearClip.y, h = iResolution.y;
-    scaleFactor = (2.0*f*(f/n))/h;
-	vec2 clipRatio = vec2(1.0) / (scaleFactor*(relZpos*(nearClip/farClip)));
-    //vec2 clipRatio = i
-
-	vertex = scale(vertex, vec3(clipRatio.xy, 1.0));
+	float zi = 1.0/vertex.z;
+	vertex = scale(vertex, vec3(zi, zi, 1.0));
 
 	return vertex;
 }
-
-//farClip * clipRatio = nearCLip
-//cr * fc = nc
-//cr = nc/fc
-
-//
 
 mat4 viewportMatrix(
 	vec2 origin, 
@@ -244,9 +197,8 @@ bool vertex_render(vec2 fragCoord, vec3 vertex){
 	return(vertex.z > 0.0 && fragCoord.x >= xmin && fragCoord.x <= xmax && fragCoord.y >= ymin && fragCoord.y <= ymax);
 }
 
-vec3 project(inout vec3 vertex, mat4 mvp, mat4 viewport){
+vec3 project(inout vec3 vertex, mat4 mvp, mat4 viewport, Camera cam){
 	vertex = apply_matrix(vertex, mvp);
-	vertex = canonical(vertex);
 	vertex = apply_matrix(vertex, viewport);
 	return vertex;
 }
@@ -280,9 +232,9 @@ bool vertex_render(vec2 fragCoord, vec3 vertices[CubeVerticesCount]){
 	return false;
 }
 
-void project(inout vec3 vertices[CubeVerticesCount], mat4 mvp, mat4 viewport){
+void project(inout vec3 vertices[CubeVerticesCount], mat4 mvp, mat4 viewport, Camera cam){
 	for(int i = 0; i<CubeVerticesCount; i++){
-		vertices[i] = project(vertices[i], mvp, viewport);
+		vertices[i] = project(vertices[i], mvp, viewport, cam);
 	}
 }
 
@@ -316,16 +268,14 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	cube_world(cube, 
 		/*scale*/vec3(0.2), 
 		/*rotate*/vec4(AXIS_Z, -0.0), 
-		/*translate*/vec3(0.0, 0.0, -1500.25)
+		/*translate*/vec3(0.0, 0.0, 0.25)
 	);
 
-    vec3 cubeCenter = vec3(0.0, 0.0, 45.0);
-    
 	vec3 cube2[CubeVerticesCount];
 	cube_world(cube2, 
-		/*scale*/vec3(0.2, 0.2, 0.8), 
-		/*rotate*/vec4(AXIS_Z, 0.0), 
-		/*translate*/cubeCenter
+		/*scale*/vec3(0.2), 
+		/*rotate*/vec4(AXIS_Z, iGlobalTime), 
+		/*translate*/vec3(0.0, 0.0, 6.5)
 	);
 	/*----------------*/
 
@@ -333,8 +283,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	//projection to screen
 
 	Camera cam = Camera(
-		/*position*/cube2[3] + vec3(0.15, 0.05, 150.5),
-		/*target*/cube[5],
+		/*position*/cube2[3] + vec3(0.3, 0.02, 1.2),
+		/*target*/cube2[3],
 		/*up*/AXIS_Y,
 		/*fov*/vec2(85.0),
 		/*resolution*/iResolution.xy,
@@ -345,9 +295,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	mat4 mvp = mvpMatrix(cam);
 	mat4 viewport = viewportMatrix(cam, mvp);
 	
-	project(cubeCenter, mvp, viewport);
-	project(cube, mvp, viewport);
-	project(cube2, mvp, viewport);
+	project(worldCenter, mvp, viewport, cam);
+	project(cube, mvp, viewport, cam);
+	project(cube2, mvp, viewport, cam);
 	/*-------------------*/
 
 	/*----------------*/
@@ -358,11 +308,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 		COLOR_GREEN : fragColor;
 	fragColor = vertex_render(fragCoord, cube2) ?
 		COLOR_BLUE : fragColor;
-	fragColor = vertex_render(fragCoord, cubeCenter) ?
+	fragColor = vertex_render(fragCoord, worldCenter) ?
 		COLOR_RED : fragColor;
 	/*----------------*/
-    
-    //float 
-
-	//fragColor = debug(cube[4].z > cube2[4].z);
 }
