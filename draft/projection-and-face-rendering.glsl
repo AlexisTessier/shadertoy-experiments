@@ -178,8 +178,8 @@ mat4 viewportMatrix(
 	float halfWidth = resolution.x/2.0, halfHeight = resolution.y/2.0;
 
 	return mat4(
-		halfWidth, 0.0, 0.0, (-origin.x*halfWidth)+halfWidth,
-		0.0, halfHeight, 0.0, (-origin.y*halfHeight)+halfHeight,
+		halfWidth, 0.0, 0.0, origin.x+halfWidth,
+		0.0, halfHeight, 0.0, origin.y+halfHeight,
 		0.0, 0.0, (far-near)/2.0, (near+far)/2.0,
 		0.0, 0.0, 0.0, 1.0
 	);

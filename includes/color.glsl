@@ -1,0 +1,5 @@
+#define COLOR_BLACK vec4(0.0)
+#define COLOR_WHITE vec4(1.0)
+#define COLOR_RED vec4(1.0, 0.0, 0.0, 1.0)
+#define COLOR_GREEN vec4(0.0, 1.0, 0.0, 1.0)
+#define COLOR_BLUE vec4(0.0, 0.0, 1.0, 1.0)

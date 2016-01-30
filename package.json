@@ -1,0 +1,31 @@
+{
+  "name": "shadertoy-experiments",
+  "version": "0.0.1",
+  "description": "glsl tools and drafts",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlexisTessier/shadertoy-experiments.git"
+  },
+  "keywords": [
+    "glsl",
+    "shadertoy",
+    "experiments"
+  ],
+  "author": "Alexis Tessier <alexis.tessier@designdo.fr>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AlexisTessier/shadertoy-experiments/issues"
+  },
+  "homepage": "https://github.com/AlexisTessier/shadertoy-experiments#readme",
+  "devDependencies": {
+    "gulp": "^3.9.0",
+    "gulp-concat": "^2.6.0",
+    "gulp-footer": "^1.0.5",
+    "gulp-header": "^1.7.1",
+    "minimist": "^1.2.0"
+  }
+}
