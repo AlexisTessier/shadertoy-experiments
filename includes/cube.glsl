@@ -13,15 +13,6 @@ void model_cube(inout vec3 cube[CubeVerticesCount]) {
 	cube[7] = vec3(-1.0, -1.0, -1.0);
 }
 
-bool render_vertex(vec2 fragCoord, vec3 vertices[CubeVerticesCount]){
-	for(int i=0;i<CubeVerticesCount;i++){
-		if(render_vertex(fragCoord, vertices[i])){
-			return true;
-		}
-	}
-	return false;
-}
-
 void apply_matrix(inout vec3 vertices[CubeVerticesCount], mat4 matrix){
 	for(int i = 0; i<CubeVerticesCount; i++){
 		vertices[i] = apply_matrix(vertices[i], matrix);
@@ -65,6 +56,15 @@ void transform(inout vec3 vertices[CubeVerticesCount], vec3 s, vec4 r, vec3 t){
 }
 
 #ifdef RENDERING_METHOD_RASTERIZATION
+bool render_vertex(vec2 fragCoord, vec3 vertices[CubeVerticesCount]){
+	for(int i=0;i<CubeVerticesCount;i++){
+		if(render_vertex(fragCoord, vertices[i])){
+			return true;
+		}
+	}
+	return false;
+}
+
 void rasterize(inout vec3 vertices[CubeVerticesCount], Camera cam){
 	for(int i = 0; i<CubeVerticesCount; i++){
 		vertices[i] = rasterize(vertices[i], cam);
