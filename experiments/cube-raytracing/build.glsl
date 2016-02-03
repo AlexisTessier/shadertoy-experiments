@@ -1,14 +1,40 @@
 
 /*------------*/
+#define RENDERING_METHOD_RAYTRACING
+#define NUMBER_OF_TRIANGLES 2
+#define MATERIAL_FLAT_COLOR
+/*------------*/
+
+
+/*------------*/
+#define INCLUDE_GLOBAL
+
+#define EPSILON 0.00001
+#define PI 3.141592653589793
+#define INFINITY (1.0 / 0.0)
+/*------------*/
+
+
+/*------------*/
+#define INCLUDE_COLOR
+
 #define COLOR_BLACK vec4(0.0)
 #define COLOR_WHITE vec4(1.0)
 #define COLOR_RED vec4(1.0, 0.0, 0.0, 1.0)
 #define COLOR_GREEN vec4(0.0, 1.0, 0.0, 1.0)
 #define COLOR_BLUE vec4(0.0, 0.0, 1.0, 1.0)
+#define COLOR_YELLOW vec4(1.0, 1.0, 0.0, 1.0)
+#define COLOR_MANGENTA vec4(1.0, 0.0, 1.0, 1.0)
+#define COLOR_CYAN vec4(0.0, 1.0, 1.0, 1.0)
+#define COLOR_ORANGE vec4(1.0, 0.5, 0.0, 1.0)
+#define COLOR_PURPLE vec4(0.5, 0.0, 1.0, 1.0)
+#define COLOR_SPRING_GREEN vec4(0.0, 1.0, 0.5, 1.0)
 /*------------*/
 
 
 /*------------*/
+#define INCLUDE_COORDINATE
+
 #define AXIS_X vec3(1.0, 0.0, 0.0)
 #define AXIS_Y vec3(0.0, 1.0, 0.0)
 #define AXIS_Z vec3(0.0, 0.0, 1.0)
@@ -18,6 +44,8 @@
 
 
 /*------------*/
+#define INCLUDE_DEBUG
+
 vec4 debug(bool condition){
 	return condition ? vec4(0.0, 0.5, 0.0, 1.0) : vec4(0.5, 0.0, 0.0, 1.0);
 }
@@ -25,6 +53,8 @@ vec4 debug(bool condition){
 
 
 /*------------*/
+#define INCLUDE_TRANSFORMATION_MATRIX
+
 mat4 identityMatrix(){
 	return mat4(
 		1.0, 0.0, 0.0, 0.0,
@@ -112,7 +142,79 @@ vec3 transform(inout vec3 vertex, vec3 s, vec4 r, vec3 t){
 
 
 /*------------*/
-#define RENDERING_METHOD_RAYTRACING
+#define INCLUDE_MATERIAL
+
+#ifdef MATERIAL_FLAT_COLOR
+struct Material{
+	vec4 color;
+};
+#endif
+/*------------*/
+
+
+/*------------*/
+#define INCLUDE_TRIANGLE
+
+struct Triangle{
+	mat3 vertices;
+	#ifdef INCLUDE_MATERIAL
+	Material material;
+	#endif
+};
+
+Triangle apply_matrix(inout Triangle triangle, mat4 matrix){
+	for(int i = 0; i<3; i++){
+		triangle.vertices[i] = apply_matrix(triangle.vertices[i], matrix);
+	}
+	return triangle;
+}
+
+Triangle scale(inout Triangle triangle, vec3 s){
+	for(int i = 0; i<3; i++){
+		triangle.vertices[i] = scale(triangle.vertices[i], s);
+	}
+	return triangle;
+}
+
+Triangle scale(inout Triangle triangle, float s){
+	for(int i = 0; i<3; i++){
+		triangle.vertices[i] = scale(triangle.vertices[i], s);
+	}
+	return triangle;
+}
+
+Triangle rotate(inout Triangle triangle, vec4 r){
+	for(int i = 0; i<3; i++){
+		triangle.vertices[i] = rotate(triangle.vertices[i], r);
+	}
+	return triangle;
+}
+
+Triangle rotate(inout Triangle triangle, vec3 axis, float angle){
+	for(int i = 0; i<3; i++){
+		triangle.vertices[i] = rotate(triangle.vertices[i], axis, angle);
+	}
+	return triangle;
+}
+
+Triangle translate(inout Triangle triangle, vec3 t){
+	for(int i = 0; i<3; i++){
+		triangle.vertices[i] = translate(triangle.vertices[i], t);
+	}
+	return triangle;
+}
+
+Triangle transform(inout Triangle triangle, vec3 s, vec4 r, vec3 t){
+	for(int i = 0; i<3; i++){
+		triangle.vertices[i] = transform(triangle.vertices[i], s, r, t);
+	}
+	return triangle;
+}
+/*------------*/
+
+
+/*------------*/
+#define INCLUDE_RAYTRACING
 
 struct Camera{
 	vec3 position;
@@ -132,9 +234,9 @@ mat4 viewMatrix(vec3 origin, vec3 target, float roll) {
 	vec3 y = normalize(cross(x, z));
 
 	return mat4(
-		x.x, y.x, z.x, origin.x,
-		x.y, y.y, z.y, origin.y,
-		x.z, y.z, z.z, origin.z,
+		x, origin.x,
+		y, origin.y,
+		z, origin.z,
 		0.0,0.0,0.0,1.0
 	);
 }
@@ -181,10 +283,9 @@ vec3 pixelToWorld(vec2 fragCoord, mat4 canvas){
 }
 
 bool rayTriangleIntersect( 
-    vec3 orig, vec3 dir, 
-    mat3 triangle, 
-    inout float t, inout float u, inout float v) 
-{
+    vec3 orig, vec3 dir, mat3 triangle, 
+    inout float t, inout float u, inout float v
+){
     vec3 v0 = triangle[0];
     vec3 v0v1 = triangle[1] - v0;
     vec3 v0v2 = triangle[2] - v0;
@@ -192,11 +293,11 @@ bool rayTriangleIntersect(
     vec3 pvec = cross(dir, v0v2);
     float det = dot(v0v1, pvec);
 
-    if (abs(det) < kEpsilon) return false;
+    if (abs(det) < EPSILON) return false;
     float invDet = 1.0 / det; 
  
     vec3 tvec = orig - v0; 
-    u = dot(tvec, pvec) * invDet; 
+    u = dot(tvec, pvec) * invDet;
     if (u < 0.0 || u > 1.0) return false; 
  
     vec3 qvec = cross(tvec, v0v1); 
@@ -207,10 +308,45 @@ bool rayTriangleIntersect(
  
     return true;
 }
+
+#ifdef INCLUDE_TRIANGLE
+bool firstHitTriangle(inout Triangle _firstHitTriangle,
+	vec3 position, vec3 direction, Triangle triangles[NUMBER_OF_TRIANGLES],
+	inout float t, inout float u, inout float v 
+){
+	bool intersect = false, intersectEnsure = false;
+	float prevT = INFINITY;
+	t = prevT; u = 0.0; v=0.0;
+
+	for(int i = 0;i<NUMBER_OF_TRIANGLES;i++){
+		intersect = rayTriangleIntersect(
+			position, direction, triangles[i].vertices, t, u, v
+		);
+		if(intersect){
+			intersectEnsure = true;
+			if(t <= prevT){
+				prevT = t;
+				_firstHitTriangle = triangles[i];
+			}
+		}
+	}
+
+	return intersectEnsure;
+}
+
+bool firstHitTriangle(inout Triangle _firstHitTriangle,
+	vec3 position, vec3 direction, Triangle triangles[NUMBER_OF_TRIANGLES]
+){
+	float t, u, v;
+	return firstHitTriangle(_firstHitTriangle, position, direction, triangles, t, u, v);
+}
+#endif
 /*------------*/
 
 
 /*------------*/
+#define INCLUDE_CUBE
+
 #define CubeVerticesCount 8
 
 #define MODEL_CUBE(varname) vec3 varname[8];model_cube(varname);
@@ -288,60 +424,44 @@ void rasterize(inout vec3 vertices[CubeVerticesCount], Camera cam){
 
 
 /*------------*/
-#define NUMBER_OF_TRIANGLES 250
+const lowp vec4 backgroundColor = COLOR_BLACK;
 
-struct Triangle{
-	mat3 vertices;
-	vec4 color;
-};
+vec4 trace(vec2 fragCoord, Camera cam, Triangle triangles[NUMBER_OF_TRIANGLES]){
+	vec4 color = backgroundColor;
 
-vec4 trace(vec2 fragCoord, Camera cam, Triangle triangles[NUMBER_OF_TRIANGLES], int triangleCount){
-	vec4 color = COLOR_BLACK;
-	float infinity = 1.0 / 0.0;
-	
-	float t = infinity, prevT = infinity, u = 0.0, v=0.0;
-	vec3 ray = normalize(pixelToWorld(fragCoord, cam.canvas) - cam.position);
+	Triangle closestTriangle;
+	bool intersect = firstHitTriangle(closestTriangle,
+		cam.position,
+		normalize(pixelToWorld(fragCoord, cam.canvas) - cam.position),
+		triangles
+	);
 
-	Triangle closestTriangle = triangles[0];
-	bool intersect = false, intersectEnsure = false;
-	for(int i = 0;i<triangleCount;i++){
-		intersect = rayTriangleIntersect(
-			cam.position, ray, triangles[i].vertices, t, u, v
-		);
-		if(intersect){
-			intersectEnsure = true;
-			if(t <= prevT){
-				prevT = t;
-				closestTriangle = triangles[i];
-			}
-		}
-	}
-
-	if(intersectEnsure){
-		color = closestTriangle.color;
+	if(intersect){
+		color = closestTriangle.material.color;
 	}
 
 	return color;
 }
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord){
+void mainImage(out vec4 fragColor, in vec2 fragCoord){
 	Triangle triangles[NUMBER_OF_TRIANGLES];
-	int triangleCount = 0;
 
 	Triangle greenTriangle = Triangle(mat3(
 		0.5, 0.5, 0.5,
 		0.0, 0.0, 0.0,
-		1.0, 0.0, 1.0), COLOR_GREEN);
+		1.0, 0.0, 1.0),
+		Material(COLOR_ORANGE)
+	);
 
 	Triangle redTriangle = Triangle(mat3(
 		1.5, 0.5, 0.5,
 		0.0, 1.0, 0.0,
-		0.8, 0.5, 1.0), COLOR_RED);
+		0.8, 0.5, 1.0),
+		Material(COLOR_PURPLE)
+	);
 
-	triangles[triangleCount]=greenTriangle;
-	triangleCount++;
-	triangles[triangleCount]=redTriangle;
-	triangleCount++;
+	triangles[0]=greenTriangle;
+	triangles[1]=redTriangle;
 
 	/*--------------*/
 	Camera cam = initCamera(
@@ -352,16 +472,6 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord){
 		/*resolution*/iResolution.xy
 	);
 
-	fragColor = trace(fragCoord, cam, triangles, triangleCount);
-
-	/*
-		from near, far and fov => compute the canvas position
-		compute fragPosition in the canvas => v
-		transpose v in the world coordinate (use the cam as origin)
-		compute ray direction (v - cam.position)
-
-		find the closest triangle hitten
-		compute the triangle colors
-	*/
+	fragColor = trace(fragCoord, cam, triangles);
 }
 /*------------*/

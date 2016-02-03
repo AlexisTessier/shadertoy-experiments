@@ -1,8 +1,11 @@
 module.exports = [
+	'global',
 	'color',
 	'coordinate',
 	'debug',
-	'matrix-transformation',
+	'transformation-matrix',
+	'material',
+	'triangle',
 	'raytracing',
 	'cube'
 ];

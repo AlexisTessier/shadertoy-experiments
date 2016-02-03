@@ -1,4 +1,4 @@
-#define RENDERING_METHOD_RASTERIZATION
+#define INCLUDE_RASTERIZATION
 
 struct Camera{
 	vec3 position;

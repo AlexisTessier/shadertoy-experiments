@@ -11,10 +11,11 @@ assert(typeof argv.exp === 'string', '--exp option must be a string');
 
 var rootPath = path.join(__dirname, 'experiments', argv.exp);
 var mainPath  = path.join(rootPath, 'main.glsl');
+var optionDefine = path.join(rootPath, 'options.glsl');
 var includeList = require(path.join(rootPath, 'includes.js'));
 
 var includesPath = path.join(__dirname, 'includes');
-var targets = [];
+var targets = [optionDefine];
 for(var i=0,imax=includeList.length;i<imax;i++){
 	targets.push(path.join(includesPath, includeList[i]+'.glsl'));
 }

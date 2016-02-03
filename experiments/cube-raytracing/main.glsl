@@ -1,57 +1,41 @@
-#define NUMBER_OF_TRIANGLES 250
+const lowp vec4 backgroundColor = COLOR_BLACK;
 
-struct Triangle{
-	mat3 vertices;
-	vec4 color;
-};
+vec4 trace(vec2 fragCoord, Camera cam, Triangle triangles[NUMBER_OF_TRIANGLES]){
+	vec4 color = backgroundColor;
 
-vec4 trace(vec2 fragCoord, Camera cam, Triangle triangles[NUMBER_OF_TRIANGLES], int triangleCount){
-	vec4 color = COLOR_BLACK;
-	float infinity = 1.0 / 0.0;
-	
-	float t = infinity, prevT = infinity, u = 0.0, v=0.0;
-	vec3 ray = normalize(pixelToWorld(fragCoord, cam.canvas) - cam.position);
+	Triangle closestTriangle;
+	bool intersect = firstHitTriangle(closestTriangle,
+		cam.position,
+		normalize(pixelToWorld(fragCoord, cam.canvas) - cam.position),
+		triangles
+	);
 
-	Triangle closestTriangle = triangles[0];
-	bool intersect = false, intersectEnsure = false;
-	for(int i = 0;i<triangleCount;i++){
-		intersect = rayTriangleIntersect(
-			cam.position, ray, triangles[i].vertices, t, u, v
-		);
-		if(intersect){
-			intersectEnsure = true;
-			if(t <= prevT){
-				prevT = t;
-				closestTriangle = triangles[i];
-			}
-		}
-	}
-
-	if(intersectEnsure){
-		color = closestTriangle.color;
+	if(intersect){
+		color = closestTriangle.material.color;
 	}
 
 	return color;
 }
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord){
+void mainImage(out vec4 fragColor, in vec2 fragCoord){
 	Triangle triangles[NUMBER_OF_TRIANGLES];
-	int triangleCount = 0;
 
 	Triangle greenTriangle = Triangle(mat3(
 		0.5, 0.5, 0.5,
 		0.0, 0.0, 0.0,
-		1.0, 0.0, 1.0), COLOR_GREEN);
+		1.0, 0.0, 1.0),
+		Material(COLOR_ORANGE)
+	);
 
 	Triangle redTriangle = Triangle(mat3(
 		1.5, 0.5, 0.5,
 		0.0, 1.0, 0.0,
-		0.8, 0.5, 1.0), COLOR_RED);
+		0.8, 0.5, 1.0),
+		Material(COLOR_PURPLE)
+	);
 
-	triangles[triangleCount]=greenTriangle;
-	triangleCount++;
-	triangles[triangleCount]=redTriangle;
-	triangleCount++;
+	triangles[0]=greenTriangle;
+	triangles[1]=redTriangle;
 
 	/*--------------*/
 	Camera cam = initCamera(
@@ -62,15 +46,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord){
 		/*resolution*/iResolution.xy
 	);
 
-	fragColor = trace(fragCoord, cam, triangles, triangleCount);
-
-	/*
-		from near, far and fov => compute the canvas position
-		compute fragPosition in the canvas => v
-		transpose v in the world coordinate (use the cam as origin)
-		compute ray direction (v - cam.position)
-
-		find the closest triangle hitten
-		compute the triangle colors
-	*/
+	fragColor = trace(fragCoord, cam, triangles);
 }

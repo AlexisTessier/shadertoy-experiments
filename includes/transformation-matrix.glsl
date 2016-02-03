@@ -1,3 +1,5 @@
+#define INCLUDE_TRANSFORMATION_MATRIX
+
 mat4 identityMatrix(){
 	return mat4(
 		1.0, 0.0, 0.0, 0.0,

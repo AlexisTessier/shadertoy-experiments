@@ -1,4 +1,4 @@
-#define RENDERING_METHOD_RAYTRACING
+#define INCLUDE_RAYTRACING
 
 struct Camera{
 	vec3 position;
@@ -18,9 +18,9 @@ mat4 viewMatrix(vec3 origin, vec3 target, float roll) {
 	vec3 y = normalize(cross(x, z));
 
 	return mat4(
-		x.x, y.x, z.x, origin.x,
-		x.y, y.y, z.y, origin.y,
-		x.z, y.z, z.z, origin.z,
+		x, origin.x,
+		y, origin.y,
+		z, origin.z,
 		0.0,0.0,0.0,1.0
 	);
 }
@@ -67,10 +67,9 @@ vec3 pixelToWorld(vec2 fragCoord, mat4 canvas){
 }
 
 bool rayTriangleIntersect( 
-    vec3 orig, vec3 dir, 
-    mat3 triangle, 
-    inout float t, inout float u, inout float v) 
-{
+    vec3 orig, vec3 dir, mat3 triangle, 
+    inout float t, inout float u, inout float v
+){
     vec3 v0 = triangle[0];
     vec3 v0v1 = triangle[1] - v0;
     vec3 v0v2 = triangle[2] - v0;
@@ -78,11 +77,11 @@ bool rayTriangleIntersect(
     vec3 pvec = cross(dir, v0v2);
     float det = dot(v0v1, pvec);
 
-    if (abs(det) < kEpsilon) return false;
+    if (abs(det) < EPSILON) return false;
     float invDet = 1.0 / det; 
  
     vec3 tvec = orig - v0; 
-    u = dot(tvec, pvec) * invDet; 
+    u = dot(tvec, pvec) * invDet;
     if (u < 0.0 || u > 1.0) return false; 
  
     vec3 qvec = cross(tvec, v0v1); 
@@ -93,3 +92,36 @@ bool rayTriangleIntersect(
  
     return true;
 }
+
+#ifdef INCLUDE_TRIANGLE
+bool firstHitTriangle(inout Triangle _firstHitTriangle,
+	vec3 position, vec3 direction, Triangle triangles[NUMBER_OF_TRIANGLES],
+	inout float t, inout float u, inout float v 
+){
+	bool intersect = false, intersectEnsure = false;
+	float prevT = INFINITY;
+	t = prevT; u = 0.0; v=0.0;
+
+	for(int i = 0;i<NUMBER_OF_TRIANGLES;i++){
+		intersect = rayTriangleIntersect(
+			position, direction, triangles[i].vertices, t, u, v
+		);
+		if(intersect){
+			intersectEnsure = true;
+			if(t <= prevT){
+				prevT = t;
+				_firstHitTriangle = triangles[i];
+			}
+		}
+	}
+
+	return intersectEnsure;
+}
+
+bool firstHitTriangle(inout Triangle _firstHitTriangle,
+	vec3 position, vec3 direction, Triangle triangles[NUMBER_OF_TRIANGLES]
+){
+	float t, u, v;
+	return firstHitTriangle(_firstHitTriangle, position, direction, triangles, t, u, v);
+}
+#endif

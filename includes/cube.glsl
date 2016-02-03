@@ -1,3 +1,5 @@
+#define INCLUDE_CUBE
+
 #define CubeVerticesCount 8
 
 #define MODEL_CUBE(varname) vec3 varname[8];model_cube(varname);
