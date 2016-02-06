@@ -3,6 +3,7 @@ module.exports = [
 	'color',
 	'coordinate',
 	'debug',
+	'cgu-common-computations',
 	'transformation-matrix',
 	'material',
 	'triangle',

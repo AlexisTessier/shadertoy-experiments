@@ -55,3 +55,22 @@ Triangle transform(inout Triangle triangle, vec3 s, vec4 r, vec3 t){
 	}
 	return triangle;
 }
+
+vec3 normal(mat3 triangle){
+	return normal(
+		triangle[1]-triangle[0],
+		triangle[2]-triangle[0]
+	);
+}
+
+vec3 normal(Triangle triangle){
+	return normal(triangle.vertices);
+}
+
+float lightReceptionFactor(vec3 lightRayDirection, mat3 triangle){
+	return lightReceptionFactor(lightRayDirection, normal(triangle));
+}
+
+float lightReceptionFactor(vec3 lightRayDirection, Triangle triangle){
+	return lightReceptionFactor(lightRayDirection, normal(triangle));
+}

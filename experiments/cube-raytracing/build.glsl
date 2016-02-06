@@ -2,7 +2,7 @@
 /*------------*/
 #define RENDERING_METHOD_RAYTRACING
 #define NUMBER_OF_TRIANGLES 2
-#define MATERIAL_FLAT_COLOR
+#define MATERIAL_TEST
 /*------------*/
 
 
@@ -48,6 +48,19 @@
 
 vec4 debug(bool condition){
 	return condition ? vec4(0.0, 0.5, 0.0, 1.0) : vec4(0.5, 0.0, 0.0, 1.0);
+}
+/*------------*/
+
+
+/*------------*/
+#define INCLUDE_CGU_COMMON_COMPUTATIONS
+
+vec3 normal(vec3 a, vec3 b){
+	return cross(normalize(a), normalize(b));
+}
+
+float lightReceptionFactor(vec3 lightRayDirection, vec3 surfaceNormal){
+	return abs(dot(lightRayDirection, surfaceNormal));
 }
 /*------------*/
 
@@ -144,11 +157,13 @@ vec3 transform(inout vec3 vertex, vec3 s, vec4 r, vec3 t){
 /*------------*/
 #define INCLUDE_MATERIAL
 
-#ifdef MATERIAL_FLAT_COLOR
 struct Material{
 	vec4 color;
-};
+
+#ifdef MATERIAL_TEST
+	float reflection;
 #endif
+};
 /*------------*/
 
 
@@ -209,6 +224,25 @@ Triangle transform(inout Triangle triangle, vec3 s, vec4 r, vec3 t){
 		triangle.vertices[i] = transform(triangle.vertices[i], s, r, t);
 	}
 	return triangle;
+}
+
+vec3 normal(mat3 triangle){
+	return normal(
+		triangle[1]-triangle[0],
+		triangle[2]-triangle[0]
+	);
+}
+
+vec3 normal(Triangle triangle){
+	return normal(triangle.vertices);
+}
+
+float lightReceptionFactor(vec3 lightRayDirection, mat3 triangle){
+	return lightReceptionFactor(lightRayDirection, normal(triangle));
+}
+
+float lightReceptionFactor(vec3 lightRayDirection, Triangle triangle){
+	return lightReceptionFactor(lightRayDirection, normal(triangle));
 }
 /*------------*/
 
@@ -424,40 +458,72 @@ void rasterize(inout vec3 vertices[CubeVerticesCount], Camera cam){
 
 
 /*------------*/
+#define RAYCAST_MAXIMUM_DEPTH 4
+
 const lowp vec4 backgroundColor = COLOR_BLACK;
 
-vec4 trace(vec2 fragCoord, Camera cam, Triangle triangles[NUMBER_OF_TRIANGLES]){
+vec4 castRay(vec3 origin, vec3 direction, Triangle triangles[NUMBER_OF_TRIANGLES]){
 	vec4 color = backgroundColor;
 
+	float t, u, v;
 	Triangle closestTriangle;
-	bool intersect = firstHitTriangle(closestTriangle,
-		cam.position,
-		normalize(pixelToWorld(fragCoord, cam.canvas) - cam.position),
-		triangles
-	);
+	bool intersect = true;
+	
 
-	if(intersect){
-		color = closestTriangle.material.color;
+	float depthReflexion = 1.0;
+	for(int depth = 0;depth < RAYCAST_MAXIMUM_DEPTH;depth++){
+		intersect = firstHitTriangle(closestTriangle,
+			origin,
+			direction,
+			triangles, 
+			t, u, v
+		);
+
+		if(intersect){
+			vec3 triangleNormal = normal(closestTriangle);
+			float reflection = dot(direction, triangleNormal);
+			color += (closestTriangle.material.color*abs(reflection)*depthReflexion);
+
+			depthReflexion *= closestTriangle.material.reflection;
+
+			origin = direction*t;
+			vec3 ax = cross(direction, triangleNormal);
+			rotate(direction, ax, radians(180.0-2.0*degrees(reflection)));
+		}else{
+			break;
+		}
 	}
 
 	return color;
 }
 
+vec4 trace(vec2 fragCoord, Camera cam, Triangle triangles[NUMBER_OF_TRIANGLES]){
+	return castRay(
+		cam.position, 
+		normalize(pixelToWorld(fragCoord, cam.canvas) - cam.position),
+		triangles
+	);
+}
+
 void mainImage(out vec4 fragColor, in vec2 fragCoord){
 	Triangle triangles[NUMBER_OF_TRIANGLES];
 
+	float rot = mod(25.0*iGlobalTime, 360.0);
+
 	Triangle greenTriangle = Triangle(mat3(
-		0.5, 0.5, 0.5,
+		0.5, 0.5, 0.0,
 		0.0, 0.0, 0.0,
-		1.0, 0.0, 1.0),
-		Material(COLOR_ORANGE)
+		1.0, 0.0, 0.0),
+		Material(COLOR_ORANGE, 0.5)
 	);
+	rotate(greenTriangle, AXIS_Y, rot);
+
 
 	Triangle redTriangle = Triangle(mat3(
-		1.5, 0.5, 0.5,
+		1.5, 0.5, 0.0,
 		0.0, 1.0, 0.0,
-		0.8, 0.5, 1.0),
-		Material(COLOR_PURPLE)
+		0.8, 0.5, 0.0),
+		Material(COLOR_PURPLE, 0.8)
 	);
 
 	triangles[0]=greenTriangle;
